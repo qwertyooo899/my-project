@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="real">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГРАНЬ — журнал о распознавании дипфейков</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='18' height='8' fill='%23D8391F'/><rect x='6' y='13' width='15' height='8' fill='%23171512'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  /* ============ ТОКЕНЫ ============ */
+  :root{
+    --bg:#F1EEE7; --ink:#171512; --ink-soft:#5F5A4F; --line:rgba(23,21,18,.16);
+    --accent:#D8391F; --ok:#2F6B3C; --card:#E9E5DC;
+    --disp:'Unbounded',sans-serif; --body:'Golos Text',sans-serif; --mono:'IBM Plex Mono',monospace;
+    --cy:#1FA7B8;
+  }
+  [data-theme="fake"]{
+    --bg:#0D0D0F; --ink:#EDEAE2; --ink-soft:#8F8B80; --line:rgba(237,234,226,.16);
+    --accent:#C7F24C; --ok:#9BD47A; --card:#141417; --cy:#E86A4A;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--body);
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+    transition:background .35s ease, color .35s ease; overflow-x:hidden;
+  }
+  ::selection{background:var(--accent); color:var(--bg)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--line); border:3px solid var(--bg)}
+  img{display:block; max-width:100%}
+  a{color:inherit; text-decoration:none}
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer}
+  .mono{font-family:var(--mono)}
+  .wrap{max-width:1440px; margin:0 auto; padding-inline:clamp(16px,4vw,56px)}
+  section{scroll-margin-top:90px}
+
+  /* ============ ФОНОВАЯ СЕТКА ============ */
+  .grid-lines{position:fixed; left:0; right:0; margin:0 auto; max-width:1440px;
+    height:100%; padding-inline:clamp(16px,4vw,56px); z-index:0; pointer-events:none;
+    display:flex; justify-content:space-between}
+  .grid-lines i{width:1px; background:var(--line); opacity:.55}
+
+  /* ============ КУРСОР ============ */
+  .cursor-dot,.cursor-ring{position:fixed; top:0; left:0; z-index:120; pointer-events:none;
+    border-radius:50%; transform:translate(-50%,-50%); mix-blend-mode:difference; display:none}
+  .cursor-dot{width:6px; height:6px; background:#fff}
+  .cursor-ring{width:32px; height:32px; border:1px solid #fff; transition:width .25s, height .25s, opacity .25s}
+  .cursor-ring.grow{width:56px; height:56px}
+  .cursor-dot.hide,.cursor-ring.hide{opacity:0}
+  @media (hover:hover) and (pointer:fine){
+    body, a, button, input, textarea, label{cursor:none}
+    input, textarea{cursor:text}
+    .cursor-dot,.cursor-ring{display:block}
+  }
+
+  /* ============ ПРОГРЕСС + ГЛИТЧ-ВСПЫШКА ============ */
+  .progress{position:fixed; top:0; left:0; height:2px; width:0%; background:var(--accent); z-index:80}
+  .theme-flash{position:fixed; inset:0; z-index:110; pointer-events:none; opacity:0;
+    background:repeating-linear-gradient(0deg, var(--ink) 0 2px, transparent 2px 10px)}
+  .theme-flash.on{animation:flash .3s steps(7) both}
+  @keyframes flash{0%{opacity:.85; clip-path:inset(0 0 0 0)} 100%{opacity:0; clip-path:inset(46% 0 46% 0)}}
+
+  /* ============ ШАПКА ============ */
+  .site-head{position:fixed; top:0; left:0; right:0; z-index:70;
+    background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line); transition:background .35s ease}
+  .head-in{display:flex; align-items:center; gap:24px; height:64px}
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--disp); font-weight:800;
+    font-size:1.05rem; letter-spacing:.06em}
+  .brand svg{width:20px; height:20px}
+  .brand-sub{font-family:var(--mono); font-weight:400; font-size:.62rem; letter-spacing:.14em;
+    color:var(--ink-soft); text-transform:uppercase; margin-top:2px}
+  .main-nav{display:flex; gap:26px; margin-left:auto}
+  .main-nav a{font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-soft); position:relative; padding:4px 0; transition:color .2s}
+  .main-nav a:hover{color:var(--ink)}
+  .main-nav a::after{content:""; position:absolute; left:0; bottom:0; height:1px; width:0;
+    background:var(--accent); transition:width .25s}
+  .main-nav a:hover::after{width:100%}
+  .head-tools{display:flex; align-items:center; gap:16px; margin-left:8px}
+  .id-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.1em; color:var(--ink-soft)}
+  .id-tag b{color:var(--ok); font-weight:500}
+  [data-theme="fake"] .id-tag b{color:var(--accent)}
+  .clock{font-family:var(--mono); font-size:.68rem; letter-spacing:.08em; color:var(--ink-soft)}
+
+  .theme-toggle{position:relative; display:flex; border:1px solid var(--ink); padding:3px;
+    font-family:var(--mono); font-size:.62rem; letter-spacing:.12em}
+  .theme-toggle span{position:relative; z-index:1; padding:5px 12px; transition:color .25s; color:var(--ink-soft)}
+  .theme-toggle span.on{color:var(--bg)}
+  .tt-thumb{position:absolute; top:3px; bottom:3px; left:3px; width:calc(50% - 3px);
+    background:var(--ink); transition:transform .3s cubic-bezier(.6,0,.2,1)}
+  [data-theme="fake"] .tt-thumb{transform:translateX(100%)}
+  .burger{display:none; width:38px; height:38px; align-items:center; justify-content:center;
+    border:1px solid var(--line)}
+  .burger svg{width:18px; height:18px}
+
+  .mobile-menu{position:fixed; inset:0; z-index:90; background:var(--bg); display:flex;
+    flex-direction:column; justify-content:center; padding:0 clamp(20px,6vw,60px);
+    opacity:0; visibility:hidden; transition:opacity .3s, visibility .3s}
+  .mobile-menu.open{opacity:1; visibility:visible}
+  .mobile-menu a{font-family:var(--disp); font-weight:600; font-size:clamp(1.6rem,8vw,2.6rem);
+    padding:14px 0; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center}
+  .mobile-menu a span{font-family:var(--mono); font-size:.7rem; color:var(--accent)}
+  .mm-close{position:absolute; top:14px; right:16px; width:42px; height:42px; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center}
+
+  /* ============ ГЕРОЙ ============ */
+  .hero{position:relative; z-index:1; min-height:100svh; display:flex; flex-direction:column;
+    padding-top:64px}
+  .hero-top{flex:1; display:flex; flex-direction:column; justify-content:center;
+    padding-block:clamp(30px,5vh,64px)}
+  .hero-meta{display:flex; flex-wrap:wrap; gap:8px 28px; font-size:.68rem; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--ink-soft); margin-bottom:clamp(20px,4vh,44px)}
+  .hero-meta em{font-style:normal; color:var(--accent)}
+  .hero-title{font-family:var(--disp); font-weight:800; text-transform:uppercase;
+    font-size:clamp(2.5rem,9.2vw,8.6rem); line-height:1.02; letter-spacing:-.01em}
+  .hero-title .line{display:block}
+  .hero-title .line:nth-child(2){padding-left:.55em}
+  .hero-title .line:nth-child(3){padding-left:1.1em}
+  .line3{display:flex; align-items:flex-end; gap:clamp(12px,2vw,28px)}
+  .accent-word{color:var(--accent)}
+  .hero-note{font-family:var(--mono); font-weight:400; font-size:.66rem; letter-spacing:.06em;
+    color:var(--ink-soft); max-width:230px; line-height:1.5; padding-bottom:.9em; text-transform:none}
+  .glitch-wrap{position:relative; display:inline-block}
+  .glitch{position:relative; display:inline-block; white-space:nowrap}
+  .glitch-layer{position:absolute; inset:0; pointer-events:none; opacity:0; will-change:transform,clip-path}
+  .glitch-layer.l1{color:var(--accent)}
+  .glitch-layer.l2{color:var(--cy)}
+  .glitch .ch{display:inline-block; will-change:transform}
+  .hero-bottom{display:flex; justify-content:space-between; align-items:flex-end; gap:32px;
+    padding-block:clamp(24px,4vh,48px)}
+  .hero-lead{max-width:52ch; font-size:clamp(1rem,1.4vw,1.15rem); color:var(--ink-soft)}
+  .hero-lead b{color:var(--ink); font-weight:600}
+  .hero-toc{font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft);
+    text-align:right; line-height:2.1; white-space:nowrap}
+  .hero-toc i{font-style:normal; color:var(--accent); margin-right:10px}
+  @keyframes mq{to{transform:translateX(-50%)}}
+  .marquee{border-top:1px solid var(--line); overflow:hidden; padding-block:13px}
+  .mq-track{display:flex; width:max-content; animation:mq 30s linear infinite;
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-soft)}
+  .mq-track span{padding:0 18px; white-space:nowrap}
+  .mq-track em{font-style:normal; color:var(--accent); padding:0 4px}
+
+  /* ============ СЕКЦИИ ============ */
+  .section{position:relative; z-index:1; padding-block:clamp(56px,9vh,110px)}
+  .section-head{display:flex; align-items:baseline; gap:20px; border-bottom:1px solid var(--ink);
+    padding-bottom:16px; margin-bottom:clamp(28px,5vh,56px)}
+  .sec-num{font-family:var(--mono); font-size:.72rem; color:var(--accent); letter-spacing:.14em}
+  .section-head h2{font-family:var(--disp); font-weight:600; font-size:clamp(1.3rem,2.6vw,2rem);
+    text-transform:uppercase; letter-spacing:.01em}
+  .sec-note{margin-left:auto; font-family:var(--mono); font-size:.66rem; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink-soft)}
+
+  /* ============ СТАТЬИ ============ */
+  .feature{display:grid; grid-template-columns:1.15fr 1fr; gap:clamp(24px,4vw,64px);
+    padding-bottom:clamp(32px,5vh,56px); margin-bottom:clamp(28px,4vh,48px); border-bottom:1px solid var(--line)}
+  .scan-frame{position:relative; overflow:hidden; border:1px solid var(--ink); aspect-ratio:16/10; background:var(--card)}
+  .scan-frame img{width:100%; height:100%; object-fit:cover;
+    filter:grayscale(1) contrast(1.06); transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+  .scan-frame::after{content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.045) 3px 4px)}
+  .scanline{position:absolute; left:0; right:0; height:26%; top:-30%;
+    border-top:1px solid var(--accent); border-bottom:1px solid var(--accent);
+    background:color-mix(in srgb, var(--accent) 10%, transparent); opacity:0}
+  .scan-frame:hover img{transform:scale(1.045)}
+  .scan-frame:hover .scanline{opacity:1; animation:scan 1.4s cubic-bezier(.4,0,.4,1)}
+  @keyframes scan{from{top:-30%} to{top:105%}}
+  .feature-body{display:flex; flex-direction:column; justify-content:center}
+  .post-meta{display:flex; gap:14px; align-items:center; font-family:var(--mono); font-size:.64rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:16px}
+  .post-meta .tag{border:1px solid var(--line); padding:3px 9px; color:var(--ink)}
+  .post-meta .num{color:var(--accent)}
+  .feature-body h3{font-size:clamp(1.5rem,2.8vw,2.4rem); line-height:1.15; font-weight:600;
+    letter-spacing:-.01em; margin-bottom:18px}
+  .feature-body p{color:var(--ink-soft); max-width:52ch; margin-bottom:26px}
+  .read-link{display:inline-flex; align-items:center; gap:10px; font-family:var(--mono);
+    font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; border-bottom:1px solid var(--ink);
+    padding-bottom:6px; width:fit-content; transition:color .2s, border-color .2s, gap .25s}
+  .read-link svg{width:14px; height:14px; transition:transform .25s}
+  .read-link:hover{color:var(--accent); border-color:var(--accent); gap:16px}
+
+  .article-list{display:flex; flex-direction:column}
+  .row{display:grid; grid-template-columns:64px 1fr auto auto 40px; gap:20px; align-items:center;
+    text-align:left; padding:clamp(18px,2.6vh,26px) 6px; border-top:1px solid var(--line);
+    transition:background .25s, padding-left .3s}
+  .row:last-child{border-bottom:1px solid var(--line)}
+  .row .r-num{font-family:var(--mono); font-size:.74rem; color:var(--ink-soft); transition:color .25s}
+  .row .r-title{font-size:clamp(1.05rem,1.9vw,1.5rem); font-weight:600; letter-spacing:-.01em; line-height:1.2}
+  .row .r-meta{display:flex; gap:12px; align-items:center; font-family:var(--mono); font-size:.62rem;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+  .row .r-meta .tag{border:1px solid var(--line); padding:2px 8px}
+  .row .r-arr{width:34px; height:34px; border:1px solid var(--line); display:flex; align-items:center;
+    justify-content:center; transition:all .25s}
+  .row .r-arr svg{width:14px; height:14px; transition:transform .25s}
+  .row:hover{background:var(--card); padding-left:18px}
+  .row:hover .r-num{color:var(--accent)}
+  .row:hover .r-arr{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+  .row:hover .r-arr svg{transform:rotate(45deg)}
+
+  .hover-preview{position:fixed; z-index:40; width:300px; height:200px; pointer-events:none;
+    border:1px solid var(--ink); overflow:hidden; opacity:0; transition:opacity .25s; background:var(--card)}
+  .hover-preview.show{opacity:1}
+  .hover-preview img{width:100%; height:100%; object-fit:cover; filter:grayscale(1) contrast(1.08)}
+  .hover-preview::after{content:"LIVE-CHECK"; position:absolute; top:8px; left:8px;
+    font-family:var(--mono); font-size:.56rem; letter-spacing:.2em; color:var(--bg);
+    background:var(--accent); padding:3px 7px}
+  @media (hover:none){.hover-preview{display:none}}
+
+  /* ============ ДЕТЕКТОР ============ */
+  .det-grid{display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--ink)}
+  .det-left{padding:clamp(22px,3vw,40px); border-right:1px solid var(--line); display:flex; flex-direction:column}
+  .det-label{font-family:var(--mono); font-size:.64rem; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-soft); margin-bottom:14px; display:flex; justify-content:space-between}
+  .det-label em{font-style:normal; color:var(--accent)}
+  textarea{width:100%; min-height:220px; resize:vertical; background:transparent; border:none;
+    outline:none; color:var(--ink); font-family:var(--body); font-size:1rem; line-height:1.6; flex:1}
+  textarea::placeholder{color:var(--ink-soft); opacity:.7}
+  .det-actions{display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-top:20px;
+    padding-top:20px; border-top:1px solid var(--line)}
+  .btn{display:inline-flex; align-items:center; gap:10px; background:var(--ink); color:var(--bg);
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    padding:13px 22px; transition:background .2s, opacity .2s}
+  .btn svg{width:15px; height:15px}
+  .btn:hover{background:var(--accent)}
+  .btn:disabled{opacity:.45; pointer-events:none}
+  .mini-btn{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-soft); border:1px solid var(--line); padding:8px 12px; display:inline-flex;
+    align-items:center; gap:7px; transition:all .2s}
+  .mini-btn svg{width:13px; height:13px}
+  .mini-btn:hover{color:var(--ink); border-color:var(--ink)}
+  .det-disclaimer{margin-top:18px; font-family:var(--mono); font-size:.6rem; letter-spacing:.06em;
+    color:var(--ink-soft); line-height:1.7}
+
+  .det-right{padding:clamp(22px,3vw,40px); position:relative; min-height:420px;
+    display:flex; flex-direction:column}
+  .det-empty{font-family:var(--mono); font-size:.74rem; line-height:2.2; color:var(--ink-soft); letter-spacing:.04em}
+  .det-empty .caret{display:inline-block; width:8px; height:14px; background:var(--accent);
+    vertical-align:middle; animation:caret 1s steps(2) infinite}
+  @keyframes caret{50%{opacity:0}}
+  .det-log{font-family:var(--mono); font-size:.72rem; line-height:2.2; color:var(--ink-soft)}
+  .det-log em{font-style:normal; color:var(--accent)}
+
+  .score-row{display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:26px; position:relative}
+  .score-num{font-family:var(--disp); font-weight:800; font-size:clamp(3.4rem,6vw,5.4rem); line-height:.95}
+  .score-cap{font-family:var(--mono); font-size:.62rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-soft); padding-bottom:10px; max-width:180px; line-height:1.7}
+  .stamp{position:absolute; right:0; top:-8px; transform:rotate(-7deg); font-family:var(--mono);
+    font-weight:600; font-size:clamp(.8rem,1.4vw,1rem); letter-spacing:.14em; text-transform:uppercase;
+    border:3px solid currentColor; border-radius:4px; padding:.45em .8em; opacity:.9;
+    animation:stampIn .4s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes stampIn{from{transform:rotate(-7deg) scale(2.2); opacity:0}}
+  .v-red{color:var(--accent)} .v-ink{color:var(--ink)} .v-green{color:var(--ok)}
+  .metric{margin-bottom:18px}
+  .m-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px}
+  .m-name{font-family:var(--mono); font-size:.64rem; letter-spacing:.16em; text-transform:uppercase}
+  .m-val{font-family:var(--mono); font-size:.72rem; color:var(--accent)}
+  .m-bar{height:5px; background:var(--line); position:relative}
+  .m-bar i{position:absolute; inset:0 auto 0 0; background:var(--accent); width:0; transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .m-note{font-family:var(--mono); font-size:.58rem; color:var(--ink-soft); margin-top:6px; letter-spacing:.03em}
+  .det-notes{margin-top:8px; padding-top:16px; border-top:1px solid var(--line); font-size:.86rem;
+    color:var(--ink-soft); line-height:1.7}
+  .det-notes b{color:var(--ink); font-weight:600}
+
+  /* ============ ПРОТОКОЛ ============ */
+  .acc{border-top:1px solid var(--line)}
+  .acc-item{border-bottom:1px solid var(--line)}
+  .acc-head{width:100%; display:grid; grid-template-columns:64px 1fr auto; gap:20px; align-items:center;
+    text-align:left; padding:clamp(16px,2.4vh,24px) 6px; transition:background .2s}
+  .acc-head:hover{background:var(--card)}
+  .acc-head .a-num{font-family:var(--mono); font-size:.74rem; color:var(--ink-soft); transition:color .2s}
+  .acc-head h3{font-size:clamp(1.05rem,1.8vw,1.4rem); font-weight:600; letter-spacing:-.01em}
+  .acc-head .a-ic{width:32px; height:32px; border:1px solid var(--line); display:flex;
+    align-items:center; justify-content:center; transition:transform .35s, background .2s, color .2s}
+  .acc-head .a-ic svg{width:14px; height:14px}
+  .acc-item.open .a-ic{transform:rotate(45deg); background:var(--ink); color:var(--bg); border-color:var(--ink)}
+  .acc-item.open .a-num{color:var(--accent)}
+  .acc-body{display:grid; grid-template-rows:0fr; transition:grid-template-rows .45s cubic-bezier(.4,0,.2,1)}
+  .acc-item.open .acc-body{grid-template-rows:1fr}
+  .acc-inner{overflow:hidden}
+  .acc-content{display:grid; grid-template-columns:64px 1fr 190px; gap:20px; padding:4px 6px 30px}
+  .acc-content .spacer{}
+  .acc-text p{color:var(--ink-soft); max-width:60ch}
+  .acc-watch{margin-top:12px; font-family:var(--mono); font-size:.66rem; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--accent)}
+  .fig{border:1px solid var(--line); padding:14px; background:var(--card)}
+  .fig svg{width:100%; height:90px; stroke:var(--ink); fill:none; stroke-width:1.6; stroke-linecap:round}
+  .fig-cap{font-family:var(--mono); font-size:.56rem; letter-spacing:.12em; color:var(--ink-soft);
+    margin-top:10px; text-transform:uppercase}
+  @keyframes blinkEye{0%,90%,100%{transform:scaleY(1)} 94%{transform:scaleY(.06)}}
+  .eye-anim{transform-origin:center; animation:blinkEye 3.4s infinite}
+  @keyframes waveShift{to{stroke-dashoffset:-60}}
+  .wave-anim{stroke-dasharray:6 4; animation:waveShift 2.6s linear infinite}
+
+  /* ============ МАНИФЕСТ ============ */
+  .manifest{border-top:1px solid var(--ink); border-bottom:1px solid var(--ink);
+    padding-block:clamp(60px,10vh,120px); position:relative; z-index:1}
+  .manifest blockquote{font-family:var(--disp); font-weight:600; font-size:clamp(1.5rem,4.2vw,3.4rem);
+    line-height:1.18; text-transform:uppercase; letter-spacing:-.01em; max-width:22ch}
+  .manifest blockquote em{font-style:normal; color:var(--accent)}
+  .manifest figcaption{margin-top:30px; font-family:var(--mono); font-size:.68rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft)}
+
+  /* ============ О ПРОЕКТЕ ============ */
+  .about-grid{display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,80px); align-items:start}
+  .about-text h2{font-family:var(--disp); font-weight:600; font-size:clamp(1.3rem,2.4vw,1.9rem);
+    text-transform:uppercase; margin-bottom:22px}
+  .about-text p{color:var(--ink-soft); margin-bottom:16px; max-width:54ch}
+  .about-text p b{color:var(--ink); font-weight:600}
+  .principles{margin-bottom:34px}
+  .principle{display:grid; grid-template-columns:44px 1fr; gap:16px; padding:16px 0;
+    border-top:1px solid var(--line)}
+  .principle:last-child{border-bottom:1px solid var(--line)}
+  .principle .p-num{font-family:var(--mono); font-size:.7rem; color:var(--accent); padding-top:4px}
+  .principle h4{font-size:1.02rem; font-weight:600; margin-bottom:4px}
+  .principle p{font-size:.86rem; color:var(--ink-soft)}
+  .sub-box{border:1px solid var(--ink); padding:clamp(20px,2.5vw,30px)}
+  .sub-box h3{font-family:var(--disp); font-weight:600; font-size:1.05rem; text-transform:uppercase; margin-bottom:8px}
+  .sub-box>p{font-size:.88rem; color:var(--ink-soft); margin-bottom:20px}
+  .sub-form{display:flex; border:1px solid var(--ink)}
+  .sub-form input{flex:1; min-width:0; background:transparent; border:none; outline:none;
+    padding:13px 14px; color:var(--ink); font-family:var(--mono); font-size:.78rem; letter-spacing:.04em}
+  .sub-form input::placeholder{color:var(--ink-soft)}
+  .sub-form button{background:var(--ink); color:var(--bg); padding:0 18px; display:flex;
+    align-items:center; gap:8px; font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+    text-transform:uppercase; transition:background .2s}
+  .sub-form button svg{width:14px; height:14px}
+  .sub-form button:hover{background:var(--accent)}
+  .sub-err{font-family:var(--mono); font-size:.62rem; color:var(--accent); margin-top:10px; min-height:1em; letter-spacing:.06em}
+
+  /* ============ ФУТЕР ============ */
+  footer{border-top:1px solid var(--ink); padding-block:clamp(40px,6vh,70px) 30px; position:relative; z-index:1}
+  .foot-top{display:flex; justify-content:space-between; gap:32px; flex-wrap:wrap; align-items:flex-end;
+    padding-bottom:36px; border-bottom:1px solid var(--line)}
+  .foot-brand{font-family:var(--disp); font-weight:800; font-size:clamp(2.6rem,7vw,5.5rem);
+    line-height:.95; text-transform:uppercase}
+  .foot-brand em{font-style:normal; color:var(--accent)}
+  .foot-nav{display:flex; flex-direction:column; gap:10px; font-family:var(--mono); font-size:.7rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft)}
+  .foot-nav a, .foot-nav button{color:var(--ink-soft); transition:color .2s; font-family:var(--mono);
+    font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; text-align:left;
+    display:inline-flex; align-items:center; gap:8px}
+  .foot-nav a:hover, .foot-nav button:hover{color:var(--accent)}
+  .foot-nav svg{width:13px; height:13px}
+  .foot-bottom{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; padding-top:22px;
+    font-family:var(--mono); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft)}
+
+  /* ============ ЧИТАЛКА ============ */
+  .reader{position:fixed; inset:0; z-index:95; background:var(--bg); overflow-y:auto;
+    opacity:0; visibility:hidden; transform:translateY(4vh); transition:opacity .35s, transform .35s, visibility .35s}
+  .reader.open{opacity:1; visibility:visible; transform:none}
+  .reader-bar{position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
+  .reader-bar .wrap{display:flex; justify-content:space-between; align-items:center; height:60px}
+  .reader-bar .rb-brand{font-family:var(--mono); font-size:.66rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-soft)}
+  .reader-close{width:38px; height:38px; border:1px solid var(--line); display:flex; align-items:center;
+    justify-content:center; transition:all .2s}
+  .reader-close:hover{background:var(--ink); color:var(--bg)}
+  .reader-close svg{width:16px; height:16px}
+  .reader-body{max-width:760px; margin:0 auto; padding:clamp(40px,7vh,80px) 20px 100px}
+  .reader-body .post-meta{margin-bottom:20px}
+  .reader-body h1{font-family:var(--disp); font-weight:600; font-size:clamp(1.6rem,4vw,2.8rem);
+    line-height:1.15; margin-bottom:28px}
+  .reader-body .scan-frame{margin-bottom:36px}
+  .reader-body p{font-size:1.05rem; line-height:1.75; margin-bottom:22px; color:var(--ink)}
+  .reader-body p:first-of-type::first-letter{font-family:var(--disp); font-weight:800; float:left;
+    font-size:3.4em; line-height:.82; padding-right:12px; padding-top:6px; color:var(--accent)}
+
+  /* ============ TOAST ============ */
+  .toast{position:fixed; bottom:26px; left:50%; transform:translate(-50%,140%); z-index:130;
+    background:var(--ink); color:var(--bg); font-family:var(--mono); font-size:.72rem;
+    letter-spacing:.08em; padding:14px 20px; display:flex; align-items:center; gap:10px;
+    transition:transform .4s cubic-bezier(.2,1,.3,1); max-width:calc(100vw - 40px)}
+  .toast svg{width:15px; height:15px; color:var(--accent); flex:none}
+  [data-theme="fake"] .toast svg{color:var(--accent)}
+  .toast.show{transform:translate(-50%,0)}
+
+  /* ============ REVEAL ============ */
+  .reveal{opacity:0; transform:translateY(26px); transition:opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); transition-delay:var(--d,0s)}
+  .reveal.in{opacity:1; transform:none}
+
+  /* ============ АДАПТИВ ============ */
+  @media (max-width:1023px){
+    .main-nav,.clock,.id-tag{display:none}
+    .burger{display:flex}
+    .det-grid{grid-template-columns:1fr}
+    .det-left{border-right:none; border-bottom:1px solid var(--line)}
+    .acc-content{grid-template-columns:1fr}
+    .acc-content .spacer{display:none}
+    .fig{max-width:230px}
+  }
+  @media (max-width:760px){
+    .feature{grid-template-columns:1fr}
+    .row{grid-template-columns:40px 1fr 34px; gap:12px}
+    .row .r-meta{display:none}
+    .hero-bottom{flex-direction:column; align-items:flex-start}
+    .hero-toc{text-align:left}
+    .about-grid{grid-template-columns:1fr}
+    .stamp{position:static; transform:rotate(-4deg); margin-top:10px}
+    .head-tools .theme-toggle span{padding:5px 9px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mq-track{animation:none}
+    *{transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-lines" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="cursor-dot" id="cDot" aria-hidden="true"></div>
+<div class="cursor-ring" id="cRing" aria-hidden="true"></div>
+<div class="progress" id="progressBar"></div>
+<div class="theme-flash" id="themeFlash" aria-hidden="true"></div>
+
+<!-- ШАПКА -->
+<header class="site-head">
+  <div class="wrap head-in">
+    <a class="brand" href="#top" aria-label="Грань — на главную">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="8" fill="var(--accent)"/><rect x="6" y="13" width="16" height="8" fill="currentColor"/></svg>
+      ГРАНЬ <span class="brand-sub">synth·media journal</span>
+    </a>
+    <nav class="main-nav" aria-label="Основная навигация">
+      <a href="#articles">Разборы</a>
+      <a href="#detector">Детектор</a>
+      <a href="#protocol">Протокол</a>
+      <a href="#about">О проекте</a>
+    </nav>
+    <div class="head-tools">
+      <span class="id-tag" id="idTag">ID: <b>VERIFIED</b></span>
+      <span class="clock" id="clock" aria-hidden="true"></span>
+      <div class="theme-toggle" id="themeToggle" role="switch" aria-checked="false" tabindex="0" aria-label="Переключить режим реальности">
+        <span class="tt-opt on" data-mode="real">REAL</span>
+        <span class="tt-opt" data-mode="fake">FAKE</span>
+        <span class="tt-thumb"></span>
+      </div>
+      <button class="burger" id="burger" aria-label="Открыть меню"><i data-lucide="menu"></i></button>
+    </div>
+  </div>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mm-close" id="mmClose" aria-label="Закрыть меню"><i data-lucide="x"></i></button>
+  <a href="#articles">Разборы <span>01</span></a>
+  <a href="#detector">Детектор <span>02</span></a>
+  <a href="#protocol">Протокол <span>03</span></a>
+  <a href="#about">О проекте <span>04</span></a>
+</div>
+
+<main id="top">
+  <!-- ГЕРОЙ -->
+  <section class="hero">
+    <div class="wrap hero-top">
+      <div class="hero-meta mono">
+        <span>Журнал о синтетических медиа</span>
+        <span>Выпуск <em>№07</em></span>
+        <span id="heroDate"></span>
+        <span>Цензура: <em>отсутствует</em></span>
+      </div>
+      <h1 class="hero-title">
+        <span class="line">Верить</span>
+        <span class="line"><span class="glitch-wrap"><span class="glitch" id="glitchWord" data-text="ГЛАЗАМ">ГЛАЗАМ</span></span></span>
+        <span class="line line3"><span class="accent-word">опасно.</span>
+          <span class="hero-note">пока вы читаете эту строку, где-то дособиралось ещё одно лицо, которого не существует</span>
+        </span>
+      </h1>
+      <div class="hero-bottom">
+        <p class="hero-lead"><b>«Грань»</b> — независимый журнал о распознавании дипфейков. Разбираем подделки по кадрам и по спектру, объясняем, как работают детекторы, и честно пишем о том, где они ломаются. Без эзотерики — только то, что можно проверить руками.</p>
+        <div class="hero-toc mono">
+          <div><i>→</i>6 разборов недели</div>
+          <div><i>→</i>детектор сгенерированного текста</div>
+          <div><i>→</i>полевой протокол: 6 признаков</div>
+        </div>
+      </div>
+    </div>
+    <div class="marquee" aria-hidden="true">
+      <div class="mq-track" id="mqTrack"></div>
+    </div>
+  </section>
+
+  <!-- СТАТЬИ -->
+  <section id="articles" class="section">
+    <div class="wrap">
+      <header class="section-head reveal">
+        <span class="sec-num">01</span><h2>Разборы</h2><span class="sec-note">6 материалов · обновляется по вторникам</span>
+      </header>
+      <div id="featureSlot" class="reveal"></div>
+      <div class="article-list reveal" id="articleList"></div>
+    </div>
+  </section>
+
+  <!-- ДЕТЕКТОР -->
+  <section id="detector" class="section">
+    <div class="wrap">
+      <header class="section-head reveal">
+        <span class="sec-num">02</span><h2>Детектор текста</h2><span class="sec-note">эвристики · работает локально в браузере</span>
+      </header>
+      <div class="det-grid reveal">
+        <div class="det-left">
+          <div class="det-label"><span>Вход: фрагмент текста</span><em>min 40 слов</em></div>
+          <textarea id="detInput" spellcheck="false" placeholder="Вставьте сюда пост, письмо или новость — детектор оценит признаки машинной генерации: штампы, ровность ритма, связки-швы…"></textarea>
+          <div class="det-actions">
+            <button class="btn" id="detRun"><i data-lucide="scan-text"></i>Сканировать</button>
+            <button class="mini-btn" id="detExSyn"><i data-lucide="bot"></i>пример: синтетика</button>
+            <button class="mini-btn" id="detExHuman"><i data-lucide="user"></i>пример: человек</button>
+          </div>
+          <p class="det-disclaimer">Детектор проверяет текст, а не человека, и выдаёт вероятность, а не приговор. Короткие фрагменты и переводные тексты он читает хуже.</p>
+        </div>
+        <div class="det-right" id="detOutput">
+          <div class="det-empty mono">
+            &gt; GRAN.DETECTOR v0.7<br>
+            &gt; статус: ожидание ввода<br>
+            &gt; метрики: клише / ритм / швы / повторы / списки<br>
+            &gt; <span class="caret"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ПРОТОКОЛ -->
+  <section id="protocol" class="section">
+    <div class="wrap">
+      <header class="section-head reveal">
+        <span class="sec-num">03</span><h2>Полевой протокол</h2><span class="sec-note">6 признаков · 30 секунд на кадр</span>
+      </header>
+      <div class="acc reveal" id="protocolAcc">
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">01</span><h3>Край волос и линия челюсти</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Генеративные модели плохо держат мелкораздробленные края: причёска «кипит», воротник то съедает подбородок, то отпускает его обратно. Поставьте видео на паузу в момент поворота головы и промотайте туда-сюда — у подделки контур будет дышать.</p>
+              <div class="acc-watch">смотреть: виски · воротник · очки</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><path d="M38 18 Q60 4 82 18 Q94 38 82 56 Q72 72 60 72 Q48 72 38 56 Q26 38 38 18 Z"/><path d="M44 18 Q64 6 86 16" stroke="var(--accent)" stroke-dasharray="3 4"/><path d="M38 18 Q28 40 40 58" stroke="var(--accent)" stroke-dasharray="3 4"/></svg>
+              <div class="fig-cap">fig.01 — граница плывёт</div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">02</span><h3>Моргание и зрачки</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Живой человек моргает нерегулярно и чуть асимметрично; синтетика — по расписанию, обоими глазами синхронно. Отражение источника света в двух зрачках должно лежать в одной точке и повторять форму источника: окно в левом глазу и пустота в правом — это физика, нарисованная отдельно от лица.</p>
+              <div class="acc-watch">смотреть: асимметрия · блики в зрачках</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><path d="M14 40 Q34 22 54 40 Q34 58 14 40 Z"/><circle class="eye-anim" cx="34" cy="40" r="7" fill="currentColor"/><path d="M66 40 Q86 22 106 40 Q86 58 66 40 Z"/><circle cx="86" cy="40" r="7" fill="currentColor"/><circle cx="86" cy="37.5" r="1.4" fill="var(--bg)" stroke="none"/></svg>
+              <div class="fig-cap">fig.02 — левый глаз моргает</div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">03</span><h3>Зубы и мелкая симметрия</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Зубы, серьги, веснушки, текстура кожи — повторяющаяся мелкая фактура, на которой модели «плывут»: в кадре 112 коронка одна, в кадре 118 — уже другая. Серьга меняет форму между планами, веснушки мигрируют по щеке. Мы считаем это приметой реальности — модель считает это шумом.</p>
+              <div class="acc-watch">смотреть: ряд зубов при разговоре · украшения</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><rect x="20" y="30" width="11" height="22" rx="4"/><rect x="34" y="30" width="11" height="22" rx="4"/><rect x="48" y="28" width="11" height="24" rx="4"/><rect x="62" y="30" width="11" height="22" rx="4"/><rect x="76" y="34" width="11" height="22" rx="4" stroke="var(--accent)"/><rect x="90" y="30" width="11" height="22" rx="4"/></svg>
+              <div class="fig-cap">fig.03 — один зуб не в такт</div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">04</span><h3>Дыхание и фонация</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Голосовые клоны часто срезают вдохи и шум комнаты: фразы начинаются «с воздуха», паузы стерильны, низ частот вычищен подчистую. Живая запись всегда дышит вместе с помещением — гул вентилятора, щелчок горла перед словом, «смазанный» низ от микрофона.</p>
+              <div class="acc-watch">слушать: вдох между фразами · эхо комнаты</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><path class="wave-anim" d="M6 40 Q16 20 26 40 T46 40 T66 40 T86 40 T106 40" /><path d="M86 40 Q96 26 106 40" stroke="var(--accent)" stroke-dasharray="2 5"/></svg>
+              <div class="fig-cap">fig.04 — хвост волны оборван</div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">05</span><h3>Физика света</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Тени и блики должны принадлежать одному источнику. В синтетике лицо освещено из окна, а тень на стене падает от люстры; отражения в очках показывают другую комнату. Проверка простая: найдите два объекта в кадре и спросите, согласуется ли у них «погода».</p>
+              <div class="acc-watch">смотреть: направление теней · отражения в очках</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><circle cx="60" cy="30" r="12"/><circle cx="22" cy="14" r="4" stroke="var(--accent)"/><circle cx="98" cy="14" r="4"/><path d="M52 42 L34 66" stroke-dasharray="4 4"/><path d="M68 42 L90 62" stroke="var(--accent)" stroke-dasharray="4 4"/></svg>
+              <div class="fig-cap">fig.05 — тени из двух миров</div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc-item">
+          <button class="acc-head" aria-expanded="false">
+            <span class="a-num">06</span><h3>Руки, текст, фон</h3><span class="a-ic"><i data-lucide="plus"></i></span>
+          </button>
+          <div class="acc-body"><div class="acc-inner"><div class="acc-content"><span class="spacer"></span>
+            <div class="acc-text">
+              <p>Классические зоны провала: пальцы (лишние фаланги, шесть вместо пяти), надписи на вывесках и упаковках (текст-«каша», меняющийся между кадрами), узоры одежды и плитки, которые перегенерируются на ходу. Всё, что модель считает «фоном», она перерисовывает каждый кадр заново.</p>
+              <div class="acc-watch">смотреть: руки в жесте · вывески · узоры</div>
+            </div>
+            <div class="fig">
+              <svg viewBox="0 0 120 80"><path d="M35 66 Q30 48 40 44 Q36 30 44 28 Q44 16 52 18 Q54 8 60 12 Q66 8 68 18 Q76 16 76 28 Q84 30 80 44 Q90 48 85 66 Z"/><path d="M48 58 L48 34 M56 58 L54 24 M64 58 L66 30 M72 58 L74 40" /><path d="M88 52 L90 40" stroke="var(--accent)" stroke-dasharray="3 3"/></svg>
+              <div class="fig-cap">fig.06 — шестой палец по совместительству</div>
+            </div>
+          </div></div></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- МАНИФЕСТ -->
+  <section class="manifest">
+    <div class="wrap">
+      <figure class="reveal">
+        <blockquote>«Раньше подделку выдавал <em>шов</em>. Теперь шов рисуют вручную — и продают как честность.»</blockquote>
+        <figcaption>— из редакционного манифеста, выпуск №01</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- О ПРОЕКТЕ -->
+  <section id="about" class="section">
+    <div class="wrap">
+      <header class="section-head reveal">
+        <span class="sec-num">04</span><h2>О проекте</h2><span class="sec-note">редакция · принципы · рассылка</span>
+      </header>
+      <div class="about-grid">
+        <div class="about-text reveal">
+          <h2>Небольшая редакция против большой фальши</h2>
+          <p>Мы — журналисты, звукач и один очень подозрительный инженер компьютерного зрения. Каждую неделю разбираем случаи: от «звонка от бабушки» до политических аудио, — и объясняем методы проверки так, чтобы их мог повторить человек без профильного образования.</p>
+          <p><b>Никакой эзотерики.</b> Каждый разбор — с повторяемыми шагами, каждая оценка — с указанием погрешности. Если инструмент не объясняет, почему он решил, что перед вами подделка, мы его не публикуем.</p>
+          <div class="principles">
+            <div class="principle"><span class="p-num mono">П.1</span><div><h4>Никаких гарантий — только вероятности</h4><p>Детектор, обещающий 100%, врёт дважды: о картинке и о себе.</p></div></div>
+            <div class="principle"><span class="p-num mono">П.2</span><div><h4>Сначала скепсис, потом вывод</h4><p>Сомнение бесплатное, опровержение репутации — нет.</p></div></div>
+            <div class="principle"><span class="p-num mono">П.3</span><div><h4>Инструменты открыты, логика объяснима</h4><p>Чёрные ящики порождают чёрную пропаганду. Мы работаем со стеклом.</p></div></div>
+          </div>
+        </div>
+        <div class="sub-box reveal" style="--d:.15s">
+          <h3>Рассылка «Грань»</h3>
+          <p>Один выпуск раз в две недели: разбор, инструмент, чек-лист. Без спама и «горячих предложений».</p>
+          <form class="sub-form" id="subscribeForm" novalidate>
+            <input type="email" id="subEmail" placeholder="you@example.com" aria-label="Электронная почта">
+            <button type="submit">Подписаться <i data-lucide="arrow-right"></i></button>
+          </form>
+          <div class="sub-err" id="subErr"></div>
+          <p class="det-disclaimer">Почта хранится только в вашем браузере — это демо-редакция без сервера.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ФУТЕР -->
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">Грань<em>.</em></div>
+      <nav class="foot-nav" aria-label="Навигация в подвале">
+        <a href="#articles">Разборы</a>
+        <a href="#detector">Детектор текста</a>
+        <a href="#protocol">Полевой протокол</a>
+        <a href="mailto:grany@journal.example">grany@journal.example</a>
+        <button id="copyLink" type="button"><i data-lucide="link-2"></i>скопировать ссылку на проект</button>
+      </nav>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2025 «Грань» · независимое медиа о синтетических медиа</span>
+      <span>тексты пишут люди — вероятно</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ЧИТАЛКА -->
+<div class="reader" id="reader" role="dialog" aria-modal="true" aria-label="Чтение статьи">
+  <div class="reader-bar">
+    <div class="wrap">
+      <span class="rb-brand">ГРАНЬ / читалка</span>
+      <button class="reader-close" id="readerClose" aria-label="Закрыть статью"><i data-lucide="x"></i></button>
+    </div>
+  </div>
+  <article class="reader-body" id="readerBody"></article>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fine = matchMedia('(hover:hover) and (pointer:fine)').matches;
+
+  /* ---------- иконки ---------- */
+  if (window.lucide) lucide.createIcons();
+
+  /* ---------- часы + дата ---------- */
+  const clock = $('#clock');
+  const tick = () => { clock.textContent = 'MSK ' + new Date().toLocaleTimeString('ru-RU', {timeZone:'Europe/Moscow'}); };
+  tick(); setInterval(tick, 1000);
+  $('#heroDate').textContent = new Date().toLocaleDateString('ru-RU', {day:'2-digit', month:'long', year:'numeric'}).toUpperCase();
+
+  /* ---------- бегущая строка ---------- */
+  const terms = ['Моргание не в такт','Тени из двух источников','Рябь на линии волос','Зубы-близнецы','Пальцы по шесть','Комнатное эхо пропало','Зрачки без блика','Дыхание оборвано'];
+  const half = terms.map(t => `<span>${t}</span><em>◆</em>`).join('');
+  $('#mqTrack').innerHTML = half + half;
+
+  /* ---------- тема REAL / FAKE ---------- */
+  const html = document.documentElement, toggle = $('#themeToggle'), flash = $('#themeFlash'), idTag = $('#idTag');
+  function setTheme(mode, silent){
+    html.dataset.theme = mode;
+    toggle.querySelector('[data-mode="real"]').classList.toggle('on', mode === 'real');
+    toggle.querySelector('[data-mode="fake"]').classList.toggle('on', mode === 'fake');
+    toggle.setAttribute('aria-checked', mode === 'fake');
+    idTag.innerHTML = mode === 'real' ? 'ID: <b>VERIFIED</b>' : 'ID: <b>UNVERIFIED?</b>';
+    try { localStorage.setItem('gran-theme', mode); } catch(e){}
+    if (!silent && !reduced){ flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on'); }
+  }
+  function flipTheme(){ setTheme(html.dataset.theme === 'real' ? 'fake' : 'real'); }
+  toggle.addEventListener('click', flipTheme);
+  toggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); flipTheme(); } });
+  try { const saved = localStorage.getItem('gran-theme'); if (saved) setTheme(saved, true); } catch(e){}
+
+  /* ---------- глитч слова «ГЛАЗАМ» ---------- */
+  const word = $('#glitchWord');
+  const text = word.dataset.text;
+  word.innerHTML = [...text].map(ch => `<span class="ch">${ch}</span>`).join('');
+  const letters = [...word.querySelectorAll('.ch')];
+  const layerBox = word.parentElement;
+  const layers = ['l1','l2'].map(cls => {
+    const s = document.createElement('span');
+    s.className = 'glitch-layer ' + cls; s.textContent = text;
+    layerBox.appendChild(s); return s;
+  });
+  let bursting = false, intensity = 0;
+  function burst(dur){
+    if (bursting || reduced) return;
+    bursting = true;
+    const t0 = performance.now();
+    function step(t){
+      const k = (t - t0) / dur;
+      if (k >= 1){
+        bursting = false; intensity = 0;
+        layers.forEach(l => { l.style.opacity = 0; });
+        word.style.transform = '';
+        letters.forEach(l => l.style.transform = '');
+        return;
+      }
+      const i = intensity;
+      layers.forEach((l, li) => {
+        const top = Math.random() * 82, h = 6 + Math.random() * 24;
+        l.style.opacity = (i * 0.9).toFixed(2);
+        l.style.clipPath = `inset(${top}% -6% ${Math.max(0, 100 - top - h)}% -6%)`;
+        l.style.transform = `translate(${(li ? -1 : 1) * (2 + Math.random() * 8) * i}px, ${(Math.random() * 5 - 2.5) * i}px)`;
+      });
+      word.style.transform = `translate(${(Math.random() * 5 - 2.5) * i}px, ${(Math.random() * 3 - 1.5) * i}px)`;
+      if (Math.random() < 0.6){
+        const l = letters[Math.floor(Math.random() * letters.length)];
+        l.style.transform = `translateY(${(Math.random() * 10 - 5) * i}px) skewX(${(Math.random() * 14 - 7) * i}deg)`;
+      }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  if (!reduced){
+    (function idle(){
+      intensity = 0.45 + Math.random() * 0.25;
+      burst(160 + Math.random() * 300);
+      setTimeout(idle, 2100 + Math.random() * 2800);
+    })();
+    if (fine){
+      const hero = $('.hero');
+      hero.addEventListener('mousemove', e => {
+        const r = word.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const d = Math.hypot(e.clientX - cx, e.clientY - cy);
+        intensity = clamp(1 - d / 420, 0, 1);
+        if (intensity > 0.35 && !bursting) burst(140 + Math.random() * 260);
+      });
+    }
+  }
+
+  /* ---------- статьи ---------- */
+  const POSTS = [
+    {
+      id:'voice', num:'01', tag:'АУДИО', time:'12 мин', seed:'gran-voice', date:'ИЮНЬ · ВЫП.07',
+      title:'Голос за три секунды: анатомия клона речи',
+      dek:'Трёх секунд чистой речи хватает, чтобы модель запомнила тембр. Дальше — вопрос денег, и с каждым годом всё менее вопрос.',
+      body:[
+        'Для клона речи нужен не весь архив записей, а короткий чистый фрагмент: несколько секунд без музыки и ветра. Модель извлекает из него «отпечаток тембра» — устойчивый набор признаков, который не зависит от того, что именно и с какой интонацией было сказано. Дальше текст просто «проживается» этим голосом, как роль — актёром.',
+        'Первое, что выдаёт клон, — стерильность. В живой записи всегда есть комната: отражение от стен, гул вентилятора, дыхание между фразами, щелчок горла перед словом. Синтезатор часто срезает весь этот слой как «шум» — и голос звучит так, будто человек говорит из идеально пустого мира.',
+        'Второй маркер — ритм. Живая речь неровная: человек запинается, тянет гласные, меняет темп посреди фразы. Клон плавно плывёт по тексту с почти одинаковой скоростью, а паузы расставлены так ровно, будто их расставлял никто, а что-то.',
+        'Практика проста, и её стоит проговорить с близкими. Если «родственник» звонит с неизвестного номера и просит срочно перевести деньги — положите трубку и перезвоните сами. Задайте вопрос, ответ на который нельзя выцепить из открытых постов. Договоритесь о кодовом слове: это до сих пор самое дешёвое средство защиты.',
+        'Банки и мессенджеры уже переучивают системы распознавания на «живость» — микродрожь голоса, дыхание, естественные артефакты канала связи. Но это гонка без финиша. Поэтому лучший детектор пока — пауза в три секунды и один неудобный вопрос.'
+      ]
+    },
+    {
+      id:'face', num:'02', tag:'ВИДЕО', time:'9 мин', seed:'gran-face', date:'ИЮНЬ · ВЫП.07',
+      title:'Моргание, зрачки, зубы: карта лицевых артефактов',
+      dek:'Лицо — самая изученная генеративными моделями область. И поэтому подделка почти всегда спотыкается не о форму носа, а о краях.',
+      body:[
+        'Первое — контур. Волосы, воротник, очки: граница «кипит», плывёт при повороте головы, иногда съедает мочку уха и возвращает её обратно. Поставьте видео на паузу в момент поворота и промотайте туда-сюда по кадрам: у подделки контур дышит.',
+        'Второе — моргание. Живой человек моргает нерегулярно и немного асимметрично. Синтетика моргает по расписанию, обоими глазами синхронно, и часто «догоняет» пропущенные моргания серией подряд.',
+        'Третье — блик. Отражение источника света в двух зрачках должно лежать в одном месте и быть одной формы. Если в левом глазу окно, а в правом ничего, значит физику света рисовали отдельно от физики лица.',
+        'Четвёртое — мелкая симметричная фактура: зубы, веснушки, серьги, поры. В кадре 112 коронка одна, в кадре 118 — другая. Модели плохо держат повторяющиеся мелкие детали, потому что для них это шум, а для нас — примета реальности.',
+        'Ни один признак по отдельности не приговор: камера плохая, свет кривой, компрессия жёсткая. Приговор выносит только совокупность. Смотрите парами: контур плюс моргание, блик плюс зубы.'
+      ]
+    },
+    {
+      id:'c2pa', num:'03', tag:'ИНДУСТРИЯ', time:'11 мин', seed:'gran-c2pa', date:'ИЮНЬ · ВЫП.07',
+      title:'C2PA и водяные знаки: почём теперь доверие по умолчанию',
+      dek:'Камера подписывает кадр в момент съёмки — красиво. Цепочка рвётся о первый скриншот — честно.',
+      body:[
+        'Идея звучит аккуратно: камера подписывает кадр в момент съёмки, и дальше подпись путешествует вместе с файлом. Открыл панель свойств — и видишь цепочку: где снято, чем обработано, что изменено. Этот подход развивается под именем C2PA, и крупные производители камер и платформ постепенно встраивают его в железо и загрузку.',
+        'Проблема в том, что цепочка рвётся о быт. Соцсеть пережимает картинку — метаданные улетают. Скриншот — цепочки больше нет. Пересылка в мессенджере — тоже. Подпись живёт ровно до первого «переслать», а новости живут именно на пересылках.',
+        'Вторая проблема тоньше: отсутствие подписи не делает изображение фейком. Подписи нет у миллиардов честных фотографий, снятых старыми камерами. Значит, «нет подписи» — это «неизвестно», а рынок быстро учится читать «неизвестно» как «подозрительно». Доверие по умолчанию подменяется подозрением по умолчанию — и это тоже потери, просто другие.',
+        'Водяные знаки внутри генеративных моделей — помощь, но не решение: их научились смывать, а гарантий устойчивости никто не даёт. Наш вывод скучный: подписи — полезный сигнал, но решение по одному сигналу — это ошибка того или другого типа на выбор.'
+      ]
+    },
+    {
+      id:'law', num:'04', tag:'ПРАВО', time:'10 мин', seed:'gran-law', date:'ИЮНЬ · ВЫП.07',
+      title:'Аудио как улика: что происходит, когда запись оспаривают в суде',
+      dek:'Запись десятилетиями считалась почти железной уликой. Дипфейки подарили выгодному側… то есть стороне защиты вечный аргумент.',
+      body:[
+        'Фонограмма десятилетиями считалась уликой, которую можно «прощупать» экспертизой до монтажа: следы склейки, неоднородность шума, следы пережатия. Дипфейки сломали эту уверенность: теперь можно оспорить любую запись, даже подлинную. У явления есть название — «дивиденд лжеца»: выгода достаётся тому, кто громче отрицает.',
+        'Экспертные вопросы меняются на глазах. Раньше спрашивали «есть ли тут монтаж», теперь всё чаще — «не сгенерирован ли голос». А ответ на второй вопрос требует сравнения с образцами речи человека. Образцы, как назло, тоже можно подделать — рекурсия, которая нравится только юристам-процессуалистам.',
+        'В разных юрисдикциях синтетику встраивают в привычные инструменты по-разному: где-то ужесточают требования к происхождению записи и цепочке владения, где-то вводят обязанность раскрывать использование ИИ при подготовке доказательств. Общего стандарта пока нет — и это само по себе уязвимость.',
+        'Вывод для обычной жизни малоутешителен и всё же полезен: запись — это версия, а не факт. Факт собирается из контекста: метаданных, свидетелей, перекрёстных данных. Чем важнее решение, тем меньше оно должно висеть на одном аудиофайле.'
+      ]
+    },
+    {
+      id:'aesthetic', num:'05', tag:'КУЛЬТУРА', time:'7 мин', seed:'gran-aes', date:'ИЮНЬ · ВЫП.07',
+      title:'Эстетика фальши: почему синтетика стала стилем',
+      dek:'У генеративных картинок появился узнаваемый вид. Сначала это был дефект. Потом — приём.',
+      body:[
+        'Восковая кожа, ровный тёплый свет, чуть сладковатая композиция — у генеративных изображений появился узнаваемый вид. Сначала «AI-look» считали браком. Потом арт-директора стали заказывать его сознательно: такая картинка читается мгновенно и стоит дешевле съёмки.',
+        'Дальше началось самое интересное. Настоящие фотографии стали ретушировать «под нейросеть» — выравнивать кожу до воска, вычищать фактуру. А синтетику, наоборот, портить: добавлять зерно, аберрации, кривой баланс белого, чтобы выглядела «как с плёнки». Фальшь имитирует подлинность, подлинность имитирует фальшь — и круг замыкается.',
+        'Когда стиль становится сигналом эпохи, доверие превращается в эстетическую категорию: мы начинаем верить не картинке, а её шероховатости. Но шероховатость теперь тоже производится за секунды. Единственное, что пока не генерируется, — это последствия: репутация, история, ответственность. На них и держим взгляд.'
+      ]
+    },
+    {
+      id:'checklist', num:'06', tag:'ПРАКТИКА', time:'5 мин', seed:'gran-check', date:'ИЮНЬ · ВЫП.07',
+      title:'30 секунд на проверку: полевой чек-лист редакции',
+      dek:'Этот чек-лист висит у нас над монитором. Он не заменяет экспертизу, но отсеивает девять из десяти «сенсаций» из чата.',
+      body:[
+        '0–10 секунд. Источник. Кто опубликовал первым, есть ли у него тело: адрес, редакция, история. Пересылаемое «видео без контекста» — уже красный флаг, независимо от содержимого.',
+        '10–20 секунд. Обратный поиск ключевого кадра. Чаще всего «свежая катастрофа» — это старая новость с перепутанной датой или стоп-кадр из видеоигры. Поиск по картинке решает это быстрее любого детектора.',
+        '20–30 секунд. Физика и края. Поставьте паузу на движении: тени из одного источника? Контур волос не «кипит»? Текст на вывесках читается? Пальцев в разумном количестве? Звук: есть вдохи и комната?',
+        'Не сошлось — не делитесь, даже чтобы «опровергнуть»: каждый репост подделки, даже с возмущённым комментарием, учит алгоритм показывать её дальше. Сошлось — перепроверьте завтра. Спешка остаётся главным союзником фальши.'
+      ]
+    }
+  ];
+
+  const pic = (seed, w, h) => `https://picsum.photos/seed/${seed}/${w}/${h}.jpg`;
+  const metaHTML = p => `<div class="post-meta mono"><span class="num">${p.num}</span><span class="tag">${p.tag}</span><span>${p.time} чтения</span><span>${p.date}</span></div>`;
+
+  /* фича-статья */
+  const f = POSTS[0];
+  $('#featureSlot').innerHTML = `
+    <article class="feature">
+      <a class="scan-frame" href="#articles" data-open="${f.id}" aria-label="${f.title}">
+        <img src="${pic(f.seed, 1100, 700)}" alt="Обложка: ${f.title}">
+        <span class="scanline"></span>
+      </a>
+      <div class="feature-body">
+        ${metaHTML(f)}
+        <h3>${f.title}</h3>
+        <p>${f.dek}</p>
+        <a class="read-link" href="#articles" data-open="${f.id}">Читать разбор <i data-lucide="arrow-up-right"></i></a>
+      </div>
+    </article>`;
+
+  /* список */
+  $('#articleList').innerHTML = POSTS.slice(1).map(p => `
+    <button class="row" data-open="${p.id}" data-seed="${p.seed}">
+      <span class="r-num mono">${p.num}</span>
+      <span class="r-title">${p.title}</span>
+      <span class="r-meta"><span class="tag">${p.tag}</span><span>${p.time}</span></span>
+      <span class="r-arr"><i data-lucide="arrow-up-right"></i></span>
+    </button>`).join('');
+
+  if (window.lucide) lucide.createIcons();
+
+  /* превью при наведении */
+  if (fine){
+    const pv = document.createElement('div');
+    pv.className = 'hover-preview'; pv.innerHTML = '<img alt="">';
+    document.body.appendChild(pv);
+    const pvImg = pv.querySelector('img');
+    POSTS.forEach(p => { const im = new Image(); im.src = pic(p.seed, 600, 400); });
+    let mx = 0, my = 0, x = 0, y = 0, rot = 0, visible = false, raf = null;
+    function loop(){
+      const nx = x + (mx - x) * 0.14, ny = y + (my - y) * 0.14;
+      rot = clamp((mx - x) * 0.18, -9, 9);
+      pv.style.transform = `translate(${nx + 24}px, ${ny - 100}px) rotate(${rot}deg)`;
+      x = nx; y = ny;
+      if (visible || Math.abs(mx - x) > 0.5) raf = requestAnimationFrame(loop); else raf = null;
+    }
+    const list = $('#articleList');
+    list.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      const row = e.target.closest('.row');
+      if (row){
+        const src = pic(row.dataset.seed, 600, 400);
+        if (pvImg.src !== src) pvImg.src = src;
+        if (!visible){ visible = true; pv.classList.add('show'); x = mx; y = my; if (!raf) raf = requestAnimationFrame(loop); }
+      } else if (visible){ visible = false; pv.classList.remove('show'); }
+    });
+    list.addEventListener('mouseleave', () => { visible = false; pv.classList.remove('show'); });
+  }
+
+  /* читалка */
+  const reader = $('#reader'), readerBody = $('#readerBody');
+  function openPost(id){
+    const p = POSTS.find(x => x.id === id); if (!p) return;
+    readerBody.innerHTML = `${metaHTML(p)}<h1>${p.title}</h1>
+      <div class="scan-frame"><img src="${pic(p.seed, 1200, 720)}" alt=""><span class="scanline"></span></div>
+      ${p.body.map(t => `<p>${t}</p>`).join('')}`;
+    reader.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    reader.scrollTop = 0;
+  }
+  function closeReader(){ reader.classList.remove('open'); document.body.style.overflow = ''; }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-open]');
+    if (t){ e.preventDefault(); openPost(t.dataset.open); }
+  });
+  $('#readerClose').addEventListener('click', closeReader);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeReader(); closeMenu(); } });
+
+  /* ---------- детектор текста ---------- */
+  const CLICHES = ['в современном мире','в наше время','в современном обществе','не секрет, что','не секрет что','важно отметить','стоит отметить','необходимо отметить','следует отметить','следует подчеркнуть','играет важную роль','играет ключевую роль','играет всё более значимую роль','играют всё более значимую роль','играют важную роль','в заключение','таким образом','тем не менее','кроме того','более того','на сегодняшний день','динамично развивается','динамично развиваются','стремительно развивается','стремительно развиваются','развиваются стремительно','открывает новые возможности','открывают новые возможности','открывает новые горизонты','открывают новые горизонты','трудно переоценить','невозможно переоценить','каждый из нас','многие из нас','в данной статье','в этой статье','подводя итог','резюмируя','имеет огромное значение','имеет важное значение','всё более значимую'];
+  const MARKERS = ['однако','также','более того','таким образом','тем не менее','вместе с тем','при этом','кроме того','следовательно','соответственно','в частности','прежде всего','в то же время','безусловно'];
+
+  const detInput = $('#detInput'), detOutput = $('#detOutput'), detRun = $('#detRun');
+
+  function countIn(low, needle){
+    let idx = 0, n = 0;
+    while ((idx = low.indexOf(needle, idx)) !== -1){ n++; idx += needle.length; }
+    return n;
+  }
+
+  function analyze(raw){
+    const clean = raw.replace(/\s+/g, ' ').trim();
+    const words = clean.toLowerCase().replace(/[^a-zа-яё\-\s]/gi, ' ').split(/\s+/).filter(w => w.length > 0);
+    const n = words.length;
+    const sents = clean.split(/[.!?…]+/).map(s => s.trim()).filter(s => s.length > 1);
+    const lens = sents.map(s => s.split(/\s+/).filter(Boolean).length);
+    const mean = lens.length ? lens.reduce((a,b) => a+b, 0) / lens.length : 0;
+    const std = lens.length > 1 ? Math.sqrt(lens.reduce((a,b) => a + (b-mean)**2, 0) / lens.length) : 0;
+    const cv = mean ? std / mean : 1;
+
+    const low = ' ' + clean.toLowerCase().replace(/[«»"]/g, ' ') + ' ';
+    let clicheHits = 0; const found = [];
+    CLICHES.forEach(c => { const k = countIn(low, c); if (k){ clicheHits += k; found.push(c); } });
+    const per100 = n ? clicheHits / n * 100 : 0;
+
+    let mHits = 0;
+    MARKERS.forEach(m => { mHits += countIn(low, ' ' + m + ' '); });
+    const mPerSent = sents.length ? mHits / sents.length : 0;
+
+    const tri = new Map();
+    for (let i = 0; i + 2 < n; i++){
+      const k = words[i] + ' ' + words[i+1] + ' ' + words[i+2];
+      tri.set(k, (tri.get(k) || 0) + 1);
+    }
+    let repCount = 0; tri.forEach(v => { if (v > 1) repCount += v - 1; });
+
+    const listLines = raw.split('\n').filter(l => /^\s*([-*•–]|\d+[.)])\s+/.test(l)).length;
+
+    const sc = {
+      cliche: clamp(per100 / 5 * 100, 0, 100),
+      uni: clamp((0.62 - cv) / 0.5, 0, 1) * 100,
+      markers: clamp((mPerSent - 0.08) / 0.5, 0, 1) * 100,
+      rep: clamp(repCount / Math.max(1, n / 40) * 100, 0, 100),
+      list: clamp(listLines / 8 * 100, 0, 100)
+    };
+    const index = Math.round(sc.cliche * 0.34 + sc.uni * 0.24 + sc.markers * 0.18 + sc.rep * 0.14 + sc.list * 0.10);
+    return { n, index, sc, sents: sents.length, mean, cv: std / (mean || 1), clicheHits, found, mHits, mPerSent, repCount, listLines };
+  }
+
+  function verdict(i){
+    if (i >= 60) return { label:'Вероятна синтетика', cls:'v-red' };
+    if (i >= 35) return { label:'Есть сомнения', cls:'v-ink' };
+    return { label:'Похоже, писал человек', cls:'v-green' };
+  }
+
+  function renderResult(r){
+    const v = verdict(r.index);
+    const cvWord = r.cv < 0.25 ? 'низкий — подозрительно ровно' : r.cv < 0.45 ? 'средний' : 'высокий — живой ритм';
+    const notes = r.found.length
+      ? `Найденные штампы: <b>${[...new Set(r.found)].slice(0, 6).join('</b>, <b>')}</b>.`
+      : 'Штампованных оборотов не найдено — уже неплохо.';
+    detOutput.innerHTML = `
+      <div class="score-row">
+        <div class="score-num">${r.index}</div>
+        <div class="score-cap mono">/ 100 — индекс синтетичности</div>
+        <div class="stamp ${v.cls}">${v.label}</div>
+      </div>
+      <div class="metric"><div class="m-top"><span class="m-name">Клише</span><span class="m-val">${Math.round(r.sc.cliche)}</span></div>
+        <div class="m-bar"><i data-w="${Math.round(r.sc.cliche)}"></i></div>
+        <div class="m-note">штампов на 100 слов: ${(r.n ? r.clicheHits / r.n * 100 : 0).toFixed(1)} · всего ${r.clicheHits}</div></div>
+      <div class="metric"><div class="m-top"><span class="m-name">Ровность ритма</span><span class="m-val">${Math.round(r.sc.uni)}</span></div>
+        <div class="m-bar"><i data-w="${Math.round(r.sc.uni)}"></i></div>
+        <div class="m-note">предложений: ${r.sents} · средняя длина: ${r.mean.toFixed(1)} слов · разброс: ${cvWord}</div></div>
+      <div class="metric"><div class="m-top"><span class="m-name">Связки-швы</span><span class="m-val">${Math.round(r.sc.markers)}</span></div>
+        <div class="m-bar"><i data-w="${Math.round(r.sc.markers)}"></i></div>
+        <div class="m-note">дискурсивных маркеров: ${r.mHits} (${r.mPerSent.toFixed(2)} на предложение)</div></div>
+      <div class="metric"><div class="m-top"><span class="m-name">Повторы конструкций</span><span class="m-val">${Math.round(r.sc.rep)}</span></div>
+        <div class="m-bar"><i data-w="${Math.round(r.sc.rep)}"></i></div>
+        <div class="m-note">повторных триграмм: ${r.repCount}</div></div>
+      <div class="metric"><div class="m-top"><span class="m-name">Списочность</span><span class="m-val">${Math.round(r.sc.list)}</span></div>
+        <div class="m-bar"><i data-w="${Math.round(r.sc.list)}"></i></div>
+        <div class="m-note">маркированных строк: ${r.listLines}</div></div>
+      <div class="det-notes">${notes}</div>
+      <div class="det-disclaimer mono">эвристическая оценка, а не доказательство. детектор проверяет текст, не человека.</div>`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      detOutput.querySelectorAll('.m-bar i').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    }));
+  }
+
+  function runScan(){
+    const txt = detInput.value;
+    const wc = txt.replace(/\s+/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+    if (wc < 40){
+      detOutput.innerHTML = `<div class="det-log mono">&gt; ошибка: <em>${wc}</em> слов — нужно минимум 40.<br>&gt; добавьте абзац-другой и попробуйте снова.</div>`;
+      return;
+    }
+    detRun.disabled = true;
+    const stages = ['&gt; токенизация…', '&gt; поиск клише…', '&gt; ритм предложений…', '&gt; связки и швы…', '&gt; готово'];
+    detOutput.innerHTML = '<div class="det-log mono"></div>';
+    const log = detOutput.querySelector('.det-log');
+    let i = 0;
+    const iv = setInterval(() => {
+      log.innerHTML += stages[i].replace('&gt;', '<em>&gt;</em>') + '<br>';
+      i++;
+      if (i >= stages.length){
+        clearInterval(iv);
+        renderResult(analyze(txt));
+        detRun.disabled = false;
+      }
+    }, reduced ? 40 : 240);
+  }
+  detRun.addEventListener('click', runScan);
+
+  const EX_SYN = 'В современном мире цифровые технологии развиваются стремительно, и важно отметить, что синтетические медиа играют всё более значимую роль в жизни общества. Кроме того, нейросети открывают новые возможности в самых разных сферах, однако при этом необходимо учитывать существующие риски. Таким образом, каждый из нас должен критически относиться к информации в сети. Более того, стоит отметить, что современные генеративные модели достигли впечатляющих результатов. В заключение следует подчеркнуть, что развитие цифровой грамотности имеет огромное значение для всего общества. Не секрет, что технологии продолжат меняться, и, безусловно, нам предстоит адаптироваться к этим изменениям.';
+  const EX_HUMAN = 'Проверял вчера ролик из чата. Голос — точно мамин. Паузы правильные, «ыканье» на месте, даже привычное «ну» перед ответом есть. Но она не могла звонить: телефон весь вечер лежал у меня на столе, экран погашен. Разобрал запись на спектрограмме — обрыв шума ровно там, где должна быть комната. Синтезатор взял тембр из старого голосового и срезал всё, что ниже ста двадцати герц. Мы с сестрой посмеялись и пошли ужинать. А ночью соседке «звонил» внук. Точно так же. С тем же «ну».';
+
+  $('#detExSyn').addEventListener('click', () => { detInput.value = EX_SYN; runScan(); });
+  $('#detExHuman').addEventListener('click', () => { detInput.value = EX_HUMAN; runScan(); });
+
+  /* ---------- аккордеон ---------- */
+  $$('#protocolAcc .acc-item').forEach(item => {
+    item.querySelector('.acc-head').addEventListener('click', () => {
+      const open = item.classList.contains('open');
+      $$('#protocolAcc .acc-item.open').forEach(o => { o.classList.remove('open'); o.querySelector('.acc-head').setAttribute('aria-expanded','false'); });
+      if (!open){ item.classList.add('open'); item.querySelector('.acc-head').setAttribute('aria-expanded','true'); }
+    });
+  });
+
+  /* ---------- reveal ---------- */
+  const io = new IntersectionObserver(es => es.forEach(en => {
+    if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); }
+  }), { threshold: 0.12 });
+  $$('.reveal').forEach(el => io.observe(el));
+
+  /* ---------- прогресс чтения ---------- */
+  const bar = $('#progressBar');
+  addEventListener('scroll', () => {
+    const h = document.documentElement;
+    bar.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%';
+  }, { passive: true });
+
+  /* ---------- курсор ---------- */
+  if (fine){
+    const dot = $('#cDot'), ring = $('#cRing');
+    let mx = -100, my = -100, rx = -100, ry = -100;
+    addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    (function loop(){
+      rx += (mx - rx) * 0.16; ry += (my - ry) * 0.16;
+      dot.style.transform = `translate(${mx}px,${my}px) translate(-50%,-50%)`;
+      ring.style.transform = `translate(${rx}px,${ry}px) translate(-50%,-50%)`;
+      requestAnimationFrame(loop);
+    })();
+    document.addEventListener('mouseover', e => {
+      const text = e.target.closest('input, textarea');
+      dot.classList.toggle('hide', !!text); ring.classList.toggle('hide', !!text);
+      ring.classList.toggle('grow', !!e.target.closest('a, button, .theme-toggle, .acc-head, .row'));
+    });
+  }
+
+  /* ---------- тост ---------- */
+  let toastTimer = null;
+  function toast(msg, icon){
+    const t = $('#toast');
+    t.innerHTML = `<i data-lucide="${icon || 'check'}"></i><span>${msg}</span>`;
+    if (window.lucide) lucide.createIcons();
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  /* ---------- подписка ---------- */
+  $('#subscribeForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const email = $('#subEmail').value.trim();
+    const err = $('#subErr');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){
+      err.textContent = '> адрес не проходит проверку — проверьте написание';
+      return;
+    }
+    err.textContent = '';
+    $('#subEmail').value = '';
+    try { localStorage.setItem('gran-sub', email); } catch(ex){}
+    toast('Готово. Выпуск №08 уже собирается.', 'mail-check');
+  });
+
+  /* ---------- копирование ссылки ---------- */
+  $('#copyLink').addEventListener('click', () => {
+    const url = location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(() => toast('Ссылка скопирована. Распространяйте скепсис.', 'link-2'))
+        .catch(() => toast('Скопируйте из адресной строки — она и так хороша.', 'alert-triangle'));
+    } else toast('Скопируйте из адресной строки — она и так хороша.', 'alert-triangle');
+  });
+
+  /* ---------- мобильное меню ---------- */
+  const menu = $('#mobileMenu');
+  function closeMenu(){ menu.classList.remove('open'); }
+  $('#burger').addEventListener('click', () => menu.classList.add('open'));
+  $('#mmClose').addEventListener('click', closeMenu);
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMenu));
+})();
+</script>
+</body>
+</html>
